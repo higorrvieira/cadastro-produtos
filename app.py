@@ -1,35 +1,28 @@
-from flask import Flask, render_template, request, redirect
-import sqlite3
+from flask import Flask, render_template, request, redirect, url_for
+import mysql.connector
 
 app = Flask(__name__)
 
-def init_db():
-    conn = sqlite3.connect("produtos.db")
-    c = conn.cursor()
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS produtos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT NOT NULL,
-            preco REAL NOT NULL,
-            quantidade INTEGER NOT NULL
-        )
-    """)
-    conn.commit()
-    conn.close()
+def get_connection():
+    return mysql.connector.connect(
+        host="localhost",
+        user="root",          
+        password="mYSqlserver!@#3", 
+        database="produtos_db"
+    )
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-    conn = sqlite3.connect("produtos.db")
-    c = conn.cursor()
+    conn = get_connection()
+    c = conn.cursor(dictionary=True)
 
     if request.method == "POST":
-        nome = request.form.get("nome")
-        preco = request.form.get("preco")
-        quantidade = request.form.get("quantidade")
-        c.execute("INSERT INTO produtos (nome, preco, quantidade) VALUES (?, ?, ?)",
+        nome = request.form["nome"]
+        preco = request.form["preco"]
+        quantidade = request.form["quantidade"]
+        c.execute("INSERT INTO produtos (nome, preco, quantidade) VALUES (%s, %s, %s)",
                   (nome, preco, quantidade))
         conn.commit()
-        return redirect("/")
 
     c.execute("SELECT * FROM produtos")
     produtos = c.fetchall()
@@ -37,6 +30,14 @@ def index():
 
     return render_template("index.html", produtos=produtos)
 
+@app.route("/delete/<int:id>")
+def delete(id):
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("DELETE FROM produtos WHERE id = %s", (id,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for("index"))
+
 if __name__ == "__main__":
-    init_db()
     app.run(debug=True)
