@@ -16,19 +16,34 @@ def index():
     conn = get_connection()
     c = conn.cursor(dictionary=True)
 
+  
     if request.method == "POST":
+        produto_id = request.form.get("id")
         nome = request.form["nome"]
         preco = request.form["preco"]
         quantidade = request.form["quantidade"]
-        c.execute("INSERT INTO produtos (nome, preco, quantidade) VALUES (%s, %s, %s)",
-                  (nome, preco, quantidade))
+
+        if produto_id: 
+            c.execute("""
+                UPDATE produtos SET nome=%s, preco=%s, quantidade=%s WHERE id=%s
+            """, (nome, preco, quantidade, produto_id))
+        else: 
+            c.execute("""
+                INSERT INTO produtos (nome, preco, quantidade) VALUES (%s, %s, %s)
+            """, (nome, preco, quantidade))
         conn.commit()
+
+    edit_id = request.args.get("edit_id")
+    produto_edit = None
+    if edit_id:
+        c.execute("SELECT * FROM produtos WHERE id = %s", (edit_id,))
+        produto_edit = c.fetchone()
 
     c.execute("SELECT * FROM produtos")
     produtos = c.fetchall()
-    conn.close()
 
-    return render_template("index.html", produtos=produtos)
+    conn.close()
+    return render_template("index.html", produtos=produtos, produto_edit=produto_edit)
 
 @app.route("/delete/<int:id>")
 def delete(id):
